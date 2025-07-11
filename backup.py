@@ -1,7 +1,8 @@
 import os
 import asyncio
-import hashlib
 import tarfile
+import subprocess
+import telegram
 
 
 BOT_TOKEN = os.environ['BOT_TOKEN']
@@ -10,24 +11,39 @@ MINECRAFT_SERVER_DIR = os.environ['MINECRAFT_SERVER_DIR']
 
 
 def compress():
-    pass
+    with tarfile.open("Backup.tar.gz", "w:gz") as tar:
+        tar.add(MINECRAFT_SERVER_DIR, arcname="Backup")
 
 def backup_change_check():
-    pass
+    hash = subprocess.run(['sha256sum', os.getcwd() + '/Backup.tar.gz'], capture_output=True, text=True)
+
+    if not os.path.exists(os.getcwd() + '/HASH'):
+        with open('HASH', 'w') as hash_file:
+            hash_file.write(hash)
+    else:
+        with open('HASH', 'r') as hash_file:
+            prev_hash = hash_file.readline()
+        if prev_hash == hash:
+            exit()
 
 async def send_backup_tel():
-    pass
+    bot = telegram.Bot(BOT_TOKEN)
+    async with bot:
+        with open('Backup.tar.gz', 'rb') as file:
+            bot.send_document(chat_id=CHANNEL_ID, document=file)
 
 async def send_backup_gdrive():
     pass
 
-async def post_backups():
-    send_backup_tel()    
-    send_backup_gdrive()
-
 
 async def main():
-    pass
+    compress()
+    backup_change_check()
+    tel = asyncio.create_task(send_backup_tel)
+    google = asyncio.create_task(send_backup_gdrive)
+
+    await tel
+    await google
 
 
 if __name__ == '__main__':
